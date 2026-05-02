@@ -1,0 +1,73 @@
+// SR4 firing modes. Recoil is a dice-pool penalty. Uncompensated recoil
+// (after subtracting Recoil Compensation) reduces the dice pool. The
+// first round of any burst/auto attack does not generate recoil.
+export const FIRING_MODES = [
+  {
+    id: 'ss',
+    label: 'Single Shot',
+    short: 'SS',
+    rounds: 1,
+    recoil: 0,
+    hint: 'One round, no recoil.',
+  },
+  {
+    id: 'sa',
+    label: 'Semi-Auto',
+    short: 'SA',
+    rounds: 1,
+    recoil: 0,
+    hint: 'One semi-auto shot.',
+  },
+  {
+    id: 'sa-burst',
+    label: 'Semi-Auto Burst (2 shots)',
+    short: 'SA-B',
+    rounds: 2,
+    recoil: 1,
+    bonus: 1,
+    hint: '2 shots, Complex Action. +1 DV, −1 recoil.',
+  },
+  {
+    id: 'bf-narrow',
+    label: 'Burst Fire (narrow)',
+    short: 'BF-N',
+    rounds: 3,
+    recoil: 2,
+    bonus: 2,
+    hint: '3-round burst on one target. +2 DV, −2 recoil.',
+  },
+  {
+    id: 'bf-wide',
+    label: 'Burst Fire (wide)',
+    short: 'BF-W',
+    rounds: 3,
+    recoil: 2,
+    hint: '3-round burst spread across targets. −2 recoil.',
+  },
+  {
+    id: 'long-burst',
+    label: 'Long Burst (6 rounds)',
+    short: 'LB',
+    rounds: 6,
+    recoil: 5,
+    bonus: 5,
+    hint: '6 rounds, Complex Action. +5 DV, −5 recoil.',
+  },
+  {
+    id: 'fa-narrow',
+    label: 'Full Auto (narrow, 10)',
+    short: 'FA-N',
+    rounds: 10,
+    recoil: 9,
+    bonus: 9,
+    hint: '10 rounds on one target. +9 DV, −9 recoil.',
+  },
+  {
+    id: 'fa-wide',
+    label: 'Full Auto (suppressive)',
+    short: 'FA-W',
+    rounds: 10,
+    recoil: 9,
+    hint: '10 rounds suppressive/spread. −9 recoil.',
+  },
+];
