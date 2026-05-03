@@ -39,8 +39,7 @@ export const MODIFIER_GROUPS = [
     title: 'Shooter Movement',
     exclusive: true,
     options: [
-      { id: 'sh-still', label: 'Stationary', mod: 0 },
-      { id: 'sh-walking', label: 'Walking', mod: -1 },
+      { id: 'sh-still', label: 'Stationary / walking', mod: 0 },
       { id: 'sh-running', label: 'Running', mod: -3 },
       { id: 'sh-vehicle', label: 'Firing from moving vehicle', mod: -3 },
     ],

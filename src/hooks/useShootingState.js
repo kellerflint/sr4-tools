@@ -42,7 +42,7 @@ function woundPenalty(boxes) {
 export function useShootingState() {
   const [stats, setStats] = useState(DEFAULT_STATS);
   const [shot, setShot] = useState(DEFAULT_SHOT);
-  const [lastRollHits, setLastRollHits] = useState(null);
+  const [lastRoll, setLastRoll] = useState(null);
 
   const updateStats = useCallback((patch) => {
     setStats((s) => ({ ...s, ...patch }));
@@ -72,16 +72,18 @@ export function useShootingState() {
     setShot((s) => ({ ...s, customMod: { ...s.customMod, ...patch } }));
   }, []);
 
-  const recordRoll = useCallback((hits) => {
-    setLastRollHits(hits);
+  const recordRoll = useCallback((result) => {
+    setLastRoll(result);
     setShot((s) =>
-      s.netHitsMode === 'compute' ? { ...s, yourHits: hits } : s
+      s.netHitsMode === 'compute' ? { ...s, yourHits: result.hits } : s
     );
   }, []);
 
+  const clearRoll = useCallback(() => setLastRoll(null), []);
+
   const resetShot = useCallback(() => {
     setShot(DEFAULT_SHOT);
-    setLastRollHits(null);
+    setLastRoll(null);
   }, []);
 
   const woundMod = useMemo(
@@ -93,13 +95,14 @@ export function useShootingState() {
     stats,
     shot,
     woundMod,
-    lastRollHits,
+    lastRoll,
     updateStats,
     updateShot,
     setExclusiveModifier,
     toggleModifier,
     updateCustomMod,
     recordRoll,
+    clearRoll,
     resetShot,
   };
 }

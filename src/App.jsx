@@ -15,13 +15,14 @@ export default function App() {
     stats,
     shot,
     woundMod,
-    lastRollHits,
+    lastRoll,
     updateStats,
     updateShot,
     setExclusiveModifier,
     toggleModifier,
     updateCustomMod,
     recordRoll,
+    clearRoll,
     resetShot,
   } = useShootingState();
 
@@ -78,19 +79,30 @@ export default function App() {
             <RollStep
               dicePool={breakdown.dicePool}
               ruleOfSix={ruleOfSix}
-              onReset={resetShot}
+              result={lastRoll}
               onRolled={recordRoll}
+              onClearRoll={clearRoll}
             />
             <DamageStep
               shot={shot}
               damage={damage}
-              lastRollHits={lastRollHits}
+              lastRollHits={lastRoll ? lastRoll.hits : null}
               onChangeAmmo={(ammoId) => updateShot({ ammoId })}
               onChangeNetHits={(netHits) => updateShot({ netHits })}
               onChangeNetHitsMode={(netHitsMode) => updateShot({ netHitsMode })}
               onChangeYourHits={(yourHits) => updateShot({ yourHits })}
               onChangeDefenderHits={(defenderHits) => updateShot({ defenderHits })}
             />
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={resetShot}
+                className="rounded-md border border-border px-4 py-2 text-sm font-medium text-muted hover:border-danger hover:text-danger"
+              >
+                Reset shot
+              </button>
+            </div>
           </div>
 
           <div>

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import StepCard from './StepCard.jsx';
 import { rollPool } from '../../utils/dice.js';
 
@@ -17,18 +16,10 @@ function Die({ value, isHit, isOne }) {
   );
 }
 
-export default function RollStep({ dicePool, ruleOfSix, onReset, onRolled }) {
-  const [result, setResult] = useState(null);
-
+export default function RollStep({ dicePool, ruleOfSix, result, onRolled, onClearRoll }) {
   const roll = () => {
     const r = rollPool(dicePool, { ruleOfSix });
-    setResult(r);
-    if (onRolled) onRolled(r.hits);
-  };
-
-  const handleReset = () => {
-    setResult(null);
-    if (onReset) onReset();
+    if (onRolled) onRolled(r);
   };
 
   return (
@@ -40,10 +31,11 @@ export default function RollStep({ dicePool, ruleOfSix, onReset, onRolled }) {
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={handleReset}
-            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:text-text"
+            onClick={onClearRoll}
+            disabled={!result}
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:text-text disabled:opacity-30"
           >
-            Reset shot
+            Reset roll
           </button>
           <button
             type="button"
