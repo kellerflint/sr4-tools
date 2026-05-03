@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import usePersistentState from './usePersistentState.js';
 import { FIRING_MODES } from '../data/firingModes.js';
 import { MODIFIER_GROUPS } from '../data/modifiers.js';
 import { AMMO_TYPES } from '../data/ammo.js';
@@ -40,8 +41,8 @@ function woundPenalty(boxes) {
 }
 
 export function useShootingState() {
-  const [stats, setStats] = useState(DEFAULT_STATS);
-  const [shot, setShot] = useState(DEFAULT_SHOT);
+  const [stats, setStats] = usePersistentState('sr4.stats', DEFAULT_STATS);
+  const [shot, setShot] = usePersistentState('sr4.shot', DEFAULT_SHOT);
   const [lastRoll, setLastRoll] = useState(null);
 
   const updateStats = useCallback((patch) => {
