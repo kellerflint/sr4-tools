@@ -28,7 +28,7 @@ function SegmentedToggle({ value, options, onChange, testIdPrefix }) {
 
 function Field({ label, children }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col items-start gap-1">
       <span className="text-xs font-medium uppercase tracking-wider text-muted">
         {label}
       </span>
