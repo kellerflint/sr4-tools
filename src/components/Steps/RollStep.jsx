@@ -33,6 +33,7 @@ export default function RollStep({ dicePool, ruleOfSix, result, onRolled, onClea
             type="button"
             onClick={onClearRoll}
             disabled={!result}
+            data-testid="reset-roll"
             className="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:text-text disabled:opacity-30"
           >
             Reset roll
@@ -41,6 +42,7 @@ export default function RollStep({ dicePool, ruleOfSix, result, onRolled, onClea
             type="button"
             onClick={roll}
             disabled={dicePool === 0}
+            data-testid="roll-button"
             className="rounded-md bg-accent px-4 py-1.5 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-40"
           >
             Roll {dicePool}d6
@@ -55,11 +57,13 @@ export default function RollStep({ dicePool, ruleOfSix, result, onRolled, onClea
       )}
 
       {result && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="roll-result">
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded bg-surface-2 px-3 py-1.5">
               <span className="text-xs uppercase tracking-wider text-muted">Hits</span>
-              <span className="ml-2 text-2xl font-bold text-success">{result.hits}</span>
+              <span className="ml-2 text-2xl font-bold text-success" data-testid="roll-hits">
+                {result.hits}
+              </span>
             </div>
             <div className="rounded bg-surface-2 px-3 py-1.5">
               <span className="text-xs uppercase tracking-wider text-muted">Ones</span>

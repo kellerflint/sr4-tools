@@ -98,6 +98,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={resetShot}
+                data-testid="reset-shot"
                 className="rounded-md border border-border px-4 py-2 text-sm font-medium text-muted hover:border-danger hover:text-danger"
               >
                 Reset shot

@@ -1,8 +1,10 @@
-export default function ChoiceButton({ active, onClick, children, sub, mod }) {
+export default function ChoiceButton({ active, onClick, children, sub, mod, testId }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-testid={testId}
+      data-active={active ? 'true' : 'false'}
       className={`flex flex-col items-start gap-1 rounded-md border px-3 py-2 text-left transition ${
         active
           ? 'border-accent bg-accent/10 text-text'

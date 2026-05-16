@@ -26,6 +26,7 @@ export default function ModifierGroup({
               }
               mod={opt.mod}
               sub={opt.note}
+              testId={`mod-${opt.id}`}
             >
               {opt.label}
             </ChoiceButton>

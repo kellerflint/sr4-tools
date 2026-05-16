@@ -1,6 +1,14 @@
-export default function Toggle({ checked, onChange, label }) {
+export default function Toggle({ checked, onChange, label, testId }) {
   return (
-    <label className="flex cursor-pointer select-none items-center gap-2">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      data-testid={testId}
+      data-checked={checked ? 'true' : 'false'}
+      onClick={() => onChange(!checked)}
+      className="flex cursor-pointer select-none items-center gap-2"
+    >
       <span
         className={`relative inline-block h-5 w-9 rounded-full transition ${
           checked ? 'bg-accent' : 'bg-surface-2'
@@ -12,13 +20,7 @@ export default function Toggle({ checked, onChange, label }) {
           }`}
         />
       </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="sr-only"
-      />
       <span className="text-sm text-text">{label}</span>
-    </label>
+    </button>
   );
 }

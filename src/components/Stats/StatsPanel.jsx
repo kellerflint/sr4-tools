@@ -21,6 +21,7 @@ export default function StatsPanel({ stats, onChange, woundMod }) {
           onChange={set('agility')}
           min={1}
           max={12}
+          testId="stat-agility"
         />
         <StatField
           label="Firearms Skill"
@@ -28,6 +29,7 @@ export default function StatsPanel({ stats, onChange, woundMod }) {
           onChange={set('firearmsSkill')}
           min={0}
           max={12}
+          testId="stat-firearms"
         />
         <StatField
           label="Recoil Comp"
@@ -36,6 +38,7 @@ export default function StatsPanel({ stats, onChange, woundMod }) {
           min={0}
           max={20}
           hint="Total RC from weapon + accessories."
+          testId="stat-recoil-comp"
         />
         <StatField
           label="Edge"
@@ -67,11 +70,13 @@ export default function StatsPanel({ stats, onChange, woundMod }) {
           checked={stats.smartlink}
           onChange={(v) => onChange({ smartlink: v })}
           label="Smartlink (+2)"
+          testId="toggle-smartlink"
         />
         <Toggle
           checked={stats.laserSight}
           onChange={(v) => onChange({ laserSight: v })}
           label="Laser sight (+1)"
+          testId="toggle-laser"
         />
         {woundMod !== 0 && (
           <span className="ml-auto rounded bg-surface-2 px-2 py-1 text-xs text-danger">

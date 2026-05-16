@@ -45,6 +45,7 @@ export default function DamageStep({
                 active={shot.ammoId === a.id}
                 onClick={() => onChangeAmmo(a.id)}
                 sub={a.hint}
+                testId={`ammo-${a.id}`}
               >
                 {a.label}
               </ChoiceButton>
@@ -71,14 +72,14 @@ export default function DamageStep({
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
             <div>
               <div className="text-xs uppercase text-muted">Damage</div>
-              <div className="text-3xl font-bold text-text">
+              <div className="text-3xl font-bold text-text" data-testid="damage-dv">
                 {dv}
                 <TypeLabel type={type} />
               </div>
             </div>
             <div>
               <div className="text-xs uppercase text-muted">AP</div>
-              <div className="text-3xl font-bold text-text">
+              <div className="text-3xl font-bold text-text" data-testid="damage-ap">
                 {ap > 0 ? `+${ap}` : ap}
               </div>
             </div>

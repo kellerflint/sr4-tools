@@ -25,6 +25,7 @@ export default function FiringModeStep({ value, onChange, recoilComp }) {
                 m.bonus ? ` · +${m.bonus} DV` : ''
               }`}
               mod={uncomp ? -uncomp : 0}
+              testId={`firing-mode-${m.id}`}
             >
               {m.label}
             </ChoiceButton>

@@ -13,6 +13,7 @@ export default function RangeStep({ value, onChange }) {
             onClick={() => onChange(r.id)}
             sub={r.hint}
             mod={r.mod}
+            testId={`range-${r.id}`}
           >
             {r.label}
           </ChoiceButton>

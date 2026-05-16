@@ -10,7 +10,13 @@ export default function AimStep({ value, onChange }) {
       hint="+1 dice per Take Aim simple action."
     >
       <div className="flex items-center gap-3">
-        <NumberStepper value={value} onChange={onChange} min={0} max={DEFAULT_AIM_CAP} />
+        <NumberStepper
+          value={value}
+          onChange={onChange}
+          min={0}
+          max={DEFAULT_AIM_CAP}
+          testId="aim"
+        />
         <span className="text-sm text-muted">
           Bonus: <span className="text-success">+{value}</span>
         </span>

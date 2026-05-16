@@ -9,7 +9,9 @@ export default function Summary({ breakdown, damage }) {
         </h2>
 
         <div className="mb-3 flex items-baseline gap-2">
-          <span className="text-5xl font-bold text-accent">{dicePool}</span>
+          <span className="text-5xl font-bold text-accent" data-testid="dice-pool">
+            {dicePool}
+          </span>
           <span className="text-sm text-muted">dice to roll</span>
         </div>
 
@@ -41,14 +43,14 @@ export default function Summary({ breakdown, damage }) {
           <div className="flex items-baseline gap-4">
             <div>
               <div className="text-xs uppercase text-muted">DV</div>
-              <div className="text-3xl font-bold text-text">
+              <div className="text-3xl font-bold text-text" data-testid="summary-dv">
                 {damage.dv}
                 {damage.type}
               </div>
             </div>
             <div>
               <div className="text-xs uppercase text-muted">AP</div>
-              <div className="text-3xl font-bold text-text">
+              <div className="text-3xl font-bold text-text" data-testid="summary-ap">
                 {damage.ap > 0 ? `+${damage.ap}` : damage.ap}
               </div>
             </div>

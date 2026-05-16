@@ -30,6 +30,7 @@ export default function NetHitsInput({
               key={m.id}
               type="button"
               onClick={() => onChangeMode(m.id)}
+              data-testid={`net-hits-mode-${m.id}`}
               className={`px-3 py-1 text-xs transition ${
                 mode === m.id
                   ? 'bg-accent text-accent-fg'
@@ -49,6 +50,7 @@ export default function NetHitsInput({
             onChange={onChangeNetHits}
             min={0}
             max={30}
+            testId="net-hits"
           />
           <span className="text-xs text-muted">
             Just type whatever you / the table calculated.
