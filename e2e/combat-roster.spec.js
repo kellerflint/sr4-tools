@@ -112,6 +112,75 @@ test('Roll All Initiative sets a score of at least REA + INT', async ({ page }) 
   expect(Number(score)).toBeGreaterThanOrEqual(8);
 });
 
+test('Acted button increments the displayed IP counter', async ({ page }) => {
+  await addCharacter(page, 'Sam', { ipMax: 2 });
+  await page.getByTestId('dm-tab-combat').click();
+  await page.getByTestId('add-combatant-button').click();
+  await page.getByTestId('add-combatant-option').first().click();
+
+  const row = page.getByTestId('combatant-row').first();
+  await expect(row).toContainText('IP 0/2');
+  await row.getByTestId('combatant-advance').click();
+  await expect(row).toContainText('IP 1/2');
+  await row.getByTestId('combatant-advance').click();
+  await expect(row).toContainText('IP 2/2');
+});
+
+test('Acted on a 1-IP combatant updates the same row in place (no reorder)', async ({ page }) => {
+  // Two 1-IP combatants. Clicking Acted on row 0 should leave it as row 0
+  // with IP 1/1 and exhausted=true. The other row stays at 0/1.
+  // Previously sortRoster pushed exhausted combatants to the bottom, which
+  // made it LOOK like the click did nothing — the row that took their
+  // place was a different combatant still at 0/1.
+  await addCharacter(page, 'Alice');
+  await addCharacter(page, 'Bob');
+  await page.getByTestId('dm-tab-combat').click();
+
+  await page.getByTestId('add-combatant-button').click();
+  await page.getByTestId('add-combatant-option').first().click();
+  await page.getByTestId('add-combatant-button').click();
+  await page.getByTestId('add-combatant-option').nth(1).click();
+
+  const rows = page.getByTestId('combatant-row');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('IP 0/1');
+  await expect(rows.nth(1)).toContainText('IP 0/1');
+
+  await rows.nth(0).getByTestId('combatant-advance').click();
+
+  // The clicked row should now show IP 1/1 and be exhausted, in the SAME
+  // position. The other row stays untouched.
+  await expect(rows.nth(0)).toContainText('IP 1/1');
+  await expect(rows.nth(0)).toHaveAttribute('data-exhausted', 'true');
+  await expect(rows.nth(1)).toContainText('IP 0/1');
+  await expect(rows.nth(1)).toHaveAttribute('data-exhausted', 'false');
+});
+
+test('Acted on first row of a multi-combatant roster increments the right one', async ({ page }) => {
+  // Two combatants, both 2 IP, both init 0 (so order is insertion order).
+  // After clicking Acted on row 0, row 0 should show 1/2 and row 1 should
+  // still be 0/2. This catches the bug where sortRoster reorders rows on
+  // every state change and makes it LOOK like Acted did nothing.
+  await addCharacter(page, 'Alice', { ipMax: 2 });
+  await addCharacter(page, 'Bob', { ipMax: 2 });
+  await page.getByTestId('dm-tab-combat').click();
+
+  await page.getByTestId('add-combatant-button').click();
+  await page.getByTestId('add-combatant-option').first().click();
+  await page.getByTestId('add-combatant-button').click();
+  await page.getByTestId('add-combatant-option').nth(1).click();
+
+  const rows = page.getByTestId('combatant-row');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('IP 0/2');
+  await expect(rows.nth(1)).toContainText('IP 0/2');
+
+  await rows.nth(0).getByTestId('combatant-advance').click();
+
+  await expect(rows.nth(0)).toContainText('IP 1/2');
+  await expect(rows.nth(1)).toContainText('IP 0/2');
+});
+
 test('Acted button consumes a pass and grays out the row when exhausted', async ({ page }) => {
   await addCharacter(page, 'Sam'); // default IP 1
   await page.getByTestId('dm-tab-combat').click();

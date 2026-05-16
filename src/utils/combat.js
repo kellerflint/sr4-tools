@@ -43,17 +43,13 @@ export function pickNextActor(combatants, charactersById) {
   return eligible[0].id;
 }
 
-// Display order: active combatants by init score desc, then exhausted
-// ones at the bottom (also init score desc among themselves).
-export function sortRoster(combatants, charactersById) {
-  return [...combatants].sort((a, b) => {
-    const aChar = charactersById.get(a.characterId);
-    const bChar = charactersById.get(b.characterId);
-    const aDone = isExhausted(a, aChar);
-    const bDone = isExhausted(b, bChar);
-    if (aDone !== bDone) return aDone ? 1 : -1;
-    return b.initScore - a.initScore;
-  });
+// Display order: by init score desc with stable insertion-order tiebreak.
+// Exhausted combatants stay where they are (just visually grayed via the
+// row's data-exhausted attribute) so clicking Acted updates the row in
+// place instead of shuffling it to the bottom and confusing the DM.
+// charactersById is accepted for forwards compatibility but unused.
+export function sortRoster(combatants /* , charactersById */) {
+  return [...combatants].sort((a, b) => b.initScore - a.initScore);
 }
 
 // Disambiguate combatants that share a characterId. Returns a Map

@@ -131,7 +131,7 @@ describe('pickNextActor', () => {
 });
 
 describe('sortRoster', () => {
-  it('places exhausted combatants below active ones', () => {
+  it('orders by init score desc regardless of exhausted state', () => {
     const charactersById = new Map([
       ['c1', char({ id: 'c1', ipMax: 1 })],
       ['c2', char({ id: 'c2', ipMax: 1 })],
@@ -143,24 +143,28 @@ describe('sortRoster', () => {
       comb({ id: 'c', characterId: 'c3', initScore: 10 }),
     ];
     const sorted = sortRoster(combatants, charactersById);
-    expect(sorted.map((c) => c.id)).toEqual(['c', 'b', 'a']);
+    expect(sorted.map((c) => c.id)).toEqual(['c', 'a', 'b']);
   });
 
-  it('orders active and exhausted groups each by init score desc', () => {
+  it('keeps tied init scores in insertion order (so Acted does not shuffle rows)', () => {
     const charactersById = new Map([
       ['c1', char({ id: 'c1', ipMax: 1 })],
       ['c2', char({ id: 'c2', ipMax: 1 })],
       ['c3', char({ id: 'c3', ipMax: 1 })],
-      ['c4', char({ id: 'c4', ipMax: 1 })],
     ]);
     const combatants = [
-      comb({ id: 'a', characterId: 'c1', initScore: 4, passesActed: 1 }), // done
-      comb({ id: 'b', characterId: 'c2', initScore: 8 }),
-      comb({ id: 'c', characterId: 'c3', initScore: 12, passesActed: 1 }), // done
-      comb({ id: 'd', characterId: 'c4', initScore: 6 }),
+      comb({ id: 'a', characterId: 'c1', initScore: 0 }),
+      comb({ id: 'b', characterId: 'c2', initScore: 0 }),
+      comb({ id: 'c', characterId: 'c3', initScore: 0 }),
     ];
     const sorted = sortRoster(combatants, charactersById);
-    expect(sorted.map((c) => c.id)).toEqual(['b', 'd', 'c', 'a']);
+    expect(sorted.map((c) => c.id)).toEqual(['a', 'b', 'c']);
+    // Mark the first as exhausted — order should NOT change
+    const after = sortRoster(
+      [{ ...combatants[0], passesActed: 1 }, combatants[1], combatants[2]],
+      charactersById
+    );
+    expect(after.map((c) => c.id)).toEqual(['a', 'b', 'c']);
   });
 });
 
