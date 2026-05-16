@@ -153,6 +153,30 @@ test('New Combat Turn resets passes (everyone can act again)', async ({ page }) 
   await expect(page.getByTestId('combat-turn')).toContainText('Combat turn 1');
 });
 
+test('New Combat Turn preserves initiative scores', async ({ page }) => {
+  await addCharacter(page, 'Sam');
+  await page.getByTestId('dm-tab-combat').click();
+  await page.getByTestId('add-combatant-button').click();
+  await page.getByTestId('add-combatant-option').first().click();
+
+  const row = page.getByTestId('combatant-row').first();
+  const initInput = row.getByTestId('combatant-init-value');
+
+  // Set init manually
+  await initInput.fill('15');
+  await initInput.blur();
+  await expect(initInput).toHaveValue('15');
+
+  // Use the pass
+  await row.getByTestId('combatant-advance').click();
+  await expect(row).toHaveAttribute('data-exhausted', 'true');
+
+  // New combat turn — passes should reset, init should stay
+  await page.getByTestId('new-combat-turn').click();
+  await expect(row).toHaveAttribute('data-exhausted', 'false');
+  await expect(initInput).toHaveValue('15');
+});
+
 test('Health adjustments apply wound modifier badge', async ({ page }) => {
   await addCharacter(page, 'Sam');
   await page.getByTestId('dm-tab-combat').click();

@@ -118,13 +118,14 @@ export default function useCombat(charactersById) {
     [setCombat]
   );
 
-  // New combat turn — reset passesActed for everyone. Initiative is NOT
-  // auto-rolled here; the DM clicks "Roll All" deliberately.
+  // New combat turn — reset passesActed for everyone. Initiative is left
+  // alone so manually entered scores survive; the DM clicks "Roll All"
+  // separately if they want a fresh roll.
   const newCombatTurn = useCallback(() => {
     setCombat((c) => ({
       ...c,
       combatTurn: (c.combatTurn || 0) + 1,
-      combatants: c.combatants.map((cb) => ({ ...cb, passesActed: 0, initScore: 0 })),
+      combatants: c.combatants.map((cb) => ({ ...cb, passesActed: 0 })),
     }));
   }, [setCombat]);
 
