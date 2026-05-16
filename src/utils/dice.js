@@ -7,6 +7,20 @@ export function rollD6() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
+// Pure: given an array of d6 results and the size of the original pool
+// (before any explosions), return the hits/glitch summary. Extracted from
+// rollPool so the deterministic logic can be unit-tested without mocking
+// Math.random.
+export function summarizeRolls(rolls, originalPoolSize) {
+  const hits = rolls.filter((d) => d >= 5).length;
+  const ones = rolls.filter((d) => d === 1).length;
+  // Glitch is measured against the ORIGINAL pool size (the dice you
+  // started with), not the post-explosion total.
+  const isGlitch = originalPoolSize > 0 && ones * 2 >= originalPoolSize;
+  const isCriticalGlitch = isGlitch && hits === 0;
+  return { hits, ones, isGlitch, isCriticalGlitch };
+}
+
 export function rollPool(size, { ruleOfSix = false } = {}) {
   size = Math.max(0, Math.floor(size));
   const rolls = [];
@@ -22,10 +36,5 @@ export function rollPool(size, { ruleOfSix = false } = {}) {
     }
   }
 
-  const hits = rolls.filter((d) => d >= 5).length;
-  const ones = rolls.filter((d) => d === 1).length;
-  const isGlitch = size > 0 && ones * 2 >= size;
-  const isCriticalGlitch = isGlitch && hits === 0;
-
-  return { rolls, hits, ones, isGlitch, isCriticalGlitch };
+  return { rolls, ...summarizeRolls(rolls, size) };
 }
