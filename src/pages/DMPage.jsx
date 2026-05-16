@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import WeaponsLibrary from '../components/DMLibrary/WeaponsLibrary.jsx';
 
 const TABS = [
   { id: 'combat', label: 'Combat' },
@@ -48,14 +49,7 @@ function CharactersPanel() {
 }
 
 function WeaponsPanel() {
-  return (
-    <div data-testid="dm-weapons-panel">
-      <EmptyPanel
-        title="Weapons Library"
-        body="No weapons saved yet. CRUD coming in the next commit."
-      />
-    </div>
-  );
+  return <WeaponsLibrary />;
 }
 
 export default function DMPage() {
