@@ -1,6 +1,5 @@
 import NumberStepper from '../common/NumberStepper.jsx';
 import {
-  isExhausted,
   physicalTrackSize,
   stunTrackSize,
   woundModifier,
@@ -28,6 +27,7 @@ export default function RosterRow({
   character,
   suffix,
   isCurrent,
+  status, // 'ready' | 'acted' | 'done'
   onRemove,
   onRollInit,
   onSetInit,
@@ -36,7 +36,12 @@ export default function RosterRow({
   onAdjustStun,
 }) {
   const missing = !character;
-  const exhausted = isExhausted(combatant, character);
+  const canAct = status === 'ready';
+  // For backwards compat the data-exhausted flag means "can't act right
+  // now" (covers both acted-this-pass and done-for-turn). The granular
+  // data-status attribute exposes the actual state for fine-grained
+  // assertions.
+  const blocked = status !== 'ready';
   const wound = woundModifier(combatant);
   const phyMax = character ? physicalTrackSize(character) : 10;
   const stunMax = character ? stunTrackSize(character) : 10;
@@ -45,12 +50,15 @@ export default function RosterRow({
     <li
       data-testid="combatant-row"
       data-current={isCurrent ? 'true' : 'false'}
-      data-exhausted={exhausted ? 'true' : 'false'}
+      data-exhausted={blocked ? 'true' : 'false'}
+      data-status={status}
       className={`rounded-md border px-3 py-2 transition ${
         isCurrent
           ? 'border-accent bg-accent/10'
-          : exhausted
-          ? 'border-border bg-surface-2 opacity-60'
+          : status === 'done'
+          ? 'border-border bg-surface-2 opacity-50'
+          : status === 'acted'
+          ? 'border-border bg-surface-2 opacity-75'
           : 'border-border bg-surface-2'
       }`}
     >
@@ -96,7 +104,7 @@ export default function RosterRow({
         <button
           type="button"
           onClick={onAdvance}
-          disabled={exhausted}
+          disabled={!canAct}
           data-testid="combatant-advance"
           className="rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-text disabled:opacity-30"
         >

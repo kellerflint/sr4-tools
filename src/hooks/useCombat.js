@@ -7,6 +7,7 @@ import { rollPool } from '../utils/dice.js';
 const DEFAULT_COMBAT = {
   combatants: [],
   combatTurn: 0,
+  currentPass: 1,
 };
 
 function newCombatant(characterId) {
@@ -118,13 +119,21 @@ export default function useCombat(charactersById) {
     [setCombat]
   );
 
-  // New combat turn — reset passesActed for everyone. Initiative is left
-  // alone so manually entered scores survive; the DM clicks "Roll All"
-  // separately if they want a fresh roll.
+  // Advance to the next initiative pass within the current combat turn.
+  // Combatants who already acted but still have IPs left become eligible
+  // again. State of passesActed is preserved.
+  const nextPass = useCallback(() => {
+    setCombat((c) => ({ ...c, currentPass: (c.currentPass || 1) + 1 }));
+  }, [setCombat]);
+
+  // New combat turn — reset passesActed for everyone and put us back on
+  // pass 1. Initiative is left alone so manually entered scores survive;
+  // the DM clicks "Roll All" separately if they want a fresh roll.
   const newCombatTurn = useCallback(() => {
     setCombat((c) => ({
       ...c,
       combatTurn: (c.combatTurn || 0) + 1,
+      currentPass: 1,
       combatants: c.combatants.map((cb) => ({ ...cb, passesActed: 0 })),
     }));
   }, [setCombat]);
@@ -141,6 +150,7 @@ export default function useCombat(charactersById) {
     rollAllInitiative,
     rollInitiativeFor,
     advanceActor,
+    nextPass,
     newCombatTurn,
     resetCombat,
   };

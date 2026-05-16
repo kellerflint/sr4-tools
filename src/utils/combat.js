@@ -26,30 +26,54 @@ export function woundModifier(combatant) {
   return 0 - p - s;
 }
 
-// Has the combatant exhausted all their initiative passes this turn?
+// Has the combatant used every one of their initiative passes for the
+// current combat turn? (Done until New Combat Turn.)
 export function isExhausted(combatant, character) {
   if (!character) return true;
   return (combatant.passesActed || 0) >= (character.ipMax || 1);
 }
 
-// Highest-initScore combatant who still has passes left. Returns null when
-// nobody can act this pass.
-export function pickNextActor(combatants, charactersById) {
-  const eligible = combatants.filter(
-    (c) => !isExhausted(c, charactersById.get(c.characterId))
+// Three-state status of a combatant within the current initiative pass:
+//   'ready' — can act now (passesActed < currentPass AND has IPs left)
+//   'acted' — already acted this pass; has more IPs (waits for Next Pass)
+//   'done'  — used every IP this combat turn
+export function combatantStatus(combatant, character, currentPass = 1) {
+  if (!character) return 'done';
+  const passes = combatant.passesActed || 0;
+  if (passes >= character.ipMax) return 'done';
+  if (passes >= currentPass) return 'acted';
+  return 'ready';
+}
+
+// Can this combatant click "Acted" right now?
+export function canActNow(combatant, character, currentPass = 1) {
+  return combatantStatus(combatant, character, currentPass) === 'ready';
+}
+
+// Highest-initScore combatant who can act THIS pass. Returns null when
+// nobody can act right now (DM should advance to Next Pass).
+export function pickNextActor(combatants, charactersById, currentPass = 1) {
+  const eligible = combatants.filter((c) =>
+    canActNow(c, charactersById.get(c.characterId), currentPass)
   );
   if (eligible.length === 0) return null;
   eligible.sort((a, b) => b.initScore - a.initScore);
   return eligible[0].id;
 }
 
-// Display order: by init score desc with stable insertion-order tiebreak.
-// Exhausted combatants stay where they are (just visually grayed via the
-// row's data-exhausted attribute) so clicking Acted updates the row in
-// place instead of shuffling it to the bottom and confusing the DM.
-// charactersById is accepted for forwards compatibility but unused.
-export function sortRoster(combatants /* , charactersById */) {
-  return [...combatants].sort((a, b) => b.initScore - a.initScore);
+// Display order:
+//   1. ready combatants by init score desc
+//   2. acted-this-pass combatants by init score desc
+//   3. done combatants by init score desc
+// JS sort is stable (ES2019+) so equal-rank combatants keep insertion order.
+const STATUS_RANK = { ready: 0, acted: 1, done: 2 };
+export function sortRoster(combatants, charactersById, currentPass = 1) {
+  return [...combatants].sort((a, b) => {
+    const aRank = STATUS_RANK[combatantStatus(a, charactersById.get(a.characterId), currentPass)];
+    const bRank = STATUS_RANK[combatantStatus(b, charactersById.get(b.characterId), currentPass)];
+    if (aRank !== bRank) return aRank - bRank;
+    return b.initScore - a.initScore;
+  });
 }
 
 // Disambiguate combatants that share a characterId. Returns a Map

@@ -6,6 +6,8 @@ import {
   stunTrackSize,
   woundModifier,
   isExhausted,
+  combatantStatus,
+  canActNow,
   pickNextActor,
   sortRoster,
   buildCombatantSuffixes,
@@ -91,8 +93,50 @@ describe('isExhausted', () => {
   });
 });
 
+describe('combatantStatus', () => {
+  it("is 'ready' when passesActed < currentPass and IPs remain", () => {
+    // Fresh combatant in pass 1: passesActed 0 < currentPass 1, ipMax 2 → ready
+    expect(
+      combatantStatus(comb({ passesActed: 0 }), char({ ipMax: 2 }), 1)
+    ).toBe('ready');
+  });
+
+  it("is 'acted' when combatant used their pass-1 slot but still has IPs", () => {
+    expect(
+      combatantStatus(comb({ passesActed: 1 }), char({ ipMax: 2 }), 1)
+    ).toBe('acted');
+  });
+
+  it("is 'ready' again in pass 2 for a multi-IP combatant that acted in pass 1", () => {
+    expect(
+      combatantStatus(comb({ passesActed: 1 }), char({ ipMax: 2 }), 2)
+    ).toBe('ready');
+  });
+
+  it("is 'done' when passesActed >= ipMax regardless of pass", () => {
+    expect(
+      combatantStatus(comb({ passesActed: 1 }), char({ ipMax: 1 }), 1)
+    ).toBe('done');
+    expect(
+      combatantStatus(comb({ passesActed: 2 }), char({ ipMax: 2 }), 5)
+    ).toBe('done');
+  });
+
+  it("is 'done' when the character has been removed", () => {
+    expect(combatantStatus(comb(), undefined, 1)).toBe('done');
+  });
+});
+
+describe('canActNow', () => {
+  it('is true only when status is ready', () => {
+    expect(canActNow(comb({ passesActed: 0 }), char({ ipMax: 2 }), 1)).toBe(true);
+    expect(canActNow(comb({ passesActed: 1 }), char({ ipMax: 2 }), 1)).toBe(false);
+    expect(canActNow(comb({ passesActed: 1 }), char({ ipMax: 1 }), 1)).toBe(false);
+  });
+});
+
 describe('pickNextActor', () => {
-  it('picks the highest init score among those with passes left', () => {
+  it('picks the highest init score among ready combatants in pass 1', () => {
     const charactersById = new Map([
       ['c1', char({ id: 'c1', ipMax: 1 })],
       ['c2', char({ id: 'c2', ipMax: 1 })],
@@ -103,68 +147,104 @@ describe('pickNextActor', () => {
       comb({ id: 'b', characterId: 'c2', initScore: 12 }),
       comb({ id: 'c', characterId: 'c3', initScore: 4 }),
     ];
-    expect(pickNextActor(combatants, charactersById)).toBe('b');
+    expect(pickNextActor(combatants, charactersById, 1)).toBe('b');
   });
 
-  it('skips exhausted combatants', () => {
+  it('skips combatants that have already acted in this pass', () => {
     const charactersById = new Map([
-      ['c1', char({ id: 'c1', ipMax: 1 })],
+      ['c1', char({ id: 'c1', ipMax: 2 })], // multi-IP
+      ['c2', char({ id: 'c2', ipMax: 1 })],
+    ]);
+    const combatants = [
+      // Acted once already in pass 1 — has more IPs but not for this pass
+      comb({ id: 'a', characterId: 'c1', initScore: 12, passesActed: 1 }),
+      comb({ id: 'b', characterId: 'c2', initScore: 5 }),
+    ];
+    expect(pickNextActor(combatants, charactersById, 1)).toBe('b');
+  });
+
+  it('returns to the multi-IP combatant in pass 2', () => {
+    const charactersById = new Map([
+      ['c1', char({ id: 'c1', ipMax: 2 })],
       ['c2', char({ id: 'c2', ipMax: 1 })],
     ]);
     const combatants = [
       comb({ id: 'a', characterId: 'c1', initScore: 12, passesActed: 1 }),
-      comb({ id: 'b', characterId: 'c2', initScore: 5 }),
+      comb({ id: 'b', characterId: 'c2', initScore: 5, passesActed: 1 }),
     ];
-    expect(pickNextActor(combatants, charactersById)).toBe('b');
+    // Pass 2: only a is eligible (c2/Bob is out of IPs)
+    expect(pickNextActor(combatants, charactersById, 2)).toBe('a');
   });
 
-  it('returns null when everyone is done', () => {
+  it('returns null when nobody can act this pass', () => {
     const charactersById = new Map([['c1', char({ ipMax: 1 })]]);
     expect(
-      pickNextActor([comb({ passesActed: 1 })], charactersById)
+      pickNextActor([comb({ passesActed: 1 })], charactersById, 1)
     ).toBeNull();
   });
 
   it('returns null on an empty roster', () => {
-    expect(pickNextActor([], new Map())).toBeNull();
+    expect(pickNextActor([], new Map(), 1)).toBeNull();
   });
 });
 
 describe('sortRoster', () => {
-  it('orders by init score desc regardless of exhausted state', () => {
+  it('orders ready combatants by init desc, then acted, then done', () => {
     const charactersById = new Map([
-      ['c1', char({ id: 'c1', ipMax: 1 })],
-      ['c2', char({ id: 'c2', ipMax: 1 })],
-      ['c3', char({ id: 'c3', ipMax: 1 })],
+      ['c1', char({ id: 'c1', ipMax: 1 })], // a: done after 1 pass
+      ['c2', char({ id: 'c2', ipMax: 1 })], // b: ready
+      ['c3', char({ id: 'c3', ipMax: 2 })], // c: acted this pass, has more
     ]);
     const combatants = [
-      comb({ id: 'a', characterId: 'c1', initScore: 5, passesActed: 1 }),
-      comb({ id: 'b', characterId: 'c2', initScore: 3 }),
-      comb({ id: 'c', characterId: 'c3', initScore: 10 }),
+      comb({ id: 'a', characterId: 'c1', initScore: 5, passesActed: 1 }), // done
+      comb({ id: 'b', characterId: 'c2', initScore: 3 }),                  // ready
+      comb({ id: 'c', characterId: 'c3', initScore: 10, passesActed: 1 }), // acted
     ];
-    const sorted = sortRoster(combatants, charactersById);
-    expect(sorted.map((c) => c.id)).toEqual(['c', 'a', 'b']);
+    // Ready first (b), then acted (c), then done (a)
+    expect(sortRoster(combatants, charactersById, 1).map((c) => c.id)).toEqual([
+      'b', 'c', 'a',
+    ]);
   });
 
-  it('keeps tied init scores in insertion order (so Acted does not shuffle rows)', () => {
+  it('after Acted on the top combatant, others still ready bubble up', () => {
+    // The bug the user reported: Alice (init 10, 2 IPs) and Bob (init 5, 1 IP).
+    // Before Acted, order is Alice, Bob (both ready). After Acted on Alice,
+    // Bob (still ready) takes the top spot; Alice (acted this pass) drops.
     const charactersById = new Map([
-      ['c1', char({ id: 'c1', ipMax: 1 })],
-      ['c2', char({ id: 'c2', ipMax: 1 })],
-      ['c3', char({ id: 'c3', ipMax: 1 })],
+      ['c1', char({ id: 'c1', ipMax: 2 })], // Alice
+      ['c2', char({ id: 'c2', ipMax: 1 })], // Bob
+    ]);
+    const before = [
+      comb({ id: 'a', characterId: 'c1', initScore: 10 }),
+      comb({ id: 'b', characterId: 'c2', initScore: 5 }),
+    ];
+    expect(sortRoster(before, charactersById, 1).map((c) => c.id)).toEqual([
+      'a', 'b',
+    ]);
+    const after = [
+      { ...before[0], passesActed: 1 }, // Alice acted
+      before[1],
+    ];
+    expect(sortRoster(after, charactersById, 1).map((c) => c.id)).toEqual([
+      'b', 'a',
+    ]);
+  });
+
+  it('higher-IP combatant bubbles up once everyone else is done', () => {
+    // Alice 4 IPs init 15, Bob 2 IPs init 18. Pass 3: Bob is done (used
+    // both his passes), Alice still has 2 more.
+    const charactersById = new Map([
+      ['alice', char({ id: 'alice', ipMax: 4 })],
+      ['bob', char({ id: 'bob', ipMax: 2 })],
     ]);
     const combatants = [
-      comb({ id: 'a', characterId: 'c1', initScore: 0 }),
-      comb({ id: 'b', characterId: 'c2', initScore: 0 }),
-      comb({ id: 'c', characterId: 'c3', initScore: 0 }),
+      comb({ id: 'a', characterId: 'alice', initScore: 15, passesActed: 2 }),
+      comb({ id: 'b', characterId: 'bob', initScore: 18, passesActed: 2 }),
     ];
-    const sorted = sortRoster(combatants, charactersById);
-    expect(sorted.map((c) => c.id)).toEqual(['a', 'b', 'c']);
-    // Mark the first as exhausted — order should NOT change
-    const after = sortRoster(
-      [{ ...combatants[0], passesActed: 1 }, combatants[1], combatants[2]],
-      charactersById
-    );
-    expect(after.map((c) => c.id)).toEqual(['a', 'b', 'c']);
+    expect(sortRoster(combatants, charactersById, 3).map((c) => c.id)).toEqual([
+      'a', // ready in pass 3
+      'b', // done
+    ]);
   });
 });
 

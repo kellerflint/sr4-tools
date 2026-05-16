@@ -3,6 +3,7 @@ import RosterRow from './RosterRow.jsx';
 import AddCombatant from './AddCombatant.jsx';
 import {
   buildCombatantSuffixes,
+  combatantStatus,
   pickNextActor,
   sortRoster,
 } from '../../utils/combat.js';
@@ -15,8 +16,9 @@ export default function Roster({
 }) {
   const [adding, setAdding] = useState(false);
 
-  const sorted = sortRoster(combat.combatants, charactersById);
-  const currentActorId = pickNextActor(combat.combatants, charactersById);
+  const currentPass = combat.currentPass || 1;
+  const sorted = sortRoster(combat.combatants, charactersById, currentPass);
+  const currentActorId = pickNextActor(combat.combatants, charactersById, currentPass);
   const suffixes = buildCombatantSuffixes(combat.combatants);
 
   return (
@@ -26,11 +28,13 @@ export default function Roster({
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
             Roster
           </h2>
-          <p className="text-xs text-muted" data-testid="combat-turn">
-            Combat turn {combat.combatTurn || 0}
+          <p className="text-xs text-muted">
+            <span data-testid="combat-turn">Combat turn {combat.combatTurn || 0}</span>
+            {' · '}
+            <span data-testid="current-pass">Pass {currentPass}</span>
           </p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap justify-end gap-1">
           <button
             type="button"
             onClick={combatActions.rollAllInitiative}
@@ -39,6 +43,15 @@ export default function Roster({
             className="rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-text disabled:opacity-30"
           >
             Roll All
+          </button>
+          <button
+            type="button"
+            onClick={combatActions.nextPass}
+            disabled={combat.combatants.length === 0}
+            data-testid="next-pass"
+            className="rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-text disabled:opacity-30"
+          >
+            Next Pass
           </button>
           <button
             type="button"
@@ -60,25 +73,30 @@ export default function Roster({
 
       {sorted.length > 0 && (
         <ul className="space-y-2">
-          {sorted.map((cb) => (
-            <RosterRow
-              key={cb.id}
-              combatant={cb}
-              character={charactersById.get(cb.characterId)}
-              suffix={suffixes.get(cb.id) || ''}
-              isCurrent={cb.id === currentActorId}
-              onRemove={() => combatActions.removeCombatant(cb.id)}
-              onRollInit={() => combatActions.rollInitiativeFor(cb.id)}
-              onSetInit={(v) => combatActions.setInitScore(cb.id, v)}
-              onAdvance={() => combatActions.advanceActor(cb.id)}
-              onAdjustPhysical={(delta) =>
-                combatActions.setCombatantBox(cb.id, 'currentPhysical', cb.currentPhysical + delta)
-              }
-              onAdjustStun={(delta) =>
-                combatActions.setCombatantBox(cb.id, 'currentStun', cb.currentStun + delta)
-              }
-            />
-          ))}
+          {sorted.map((cb) => {
+            const character = charactersById.get(cb.characterId);
+            const status = combatantStatus(cb, character, currentPass);
+            return (
+              <RosterRow
+                key={cb.id}
+                combatant={cb}
+                character={character}
+                suffix={suffixes.get(cb.id) || ''}
+                isCurrent={cb.id === currentActorId}
+                status={status}
+                onRemove={() => combatActions.removeCombatant(cb.id)}
+                onRollInit={() => combatActions.rollInitiativeFor(cb.id)}
+                onSetInit={(v) => combatActions.setInitScore(cb.id, v)}
+                onAdvance={() => combatActions.advanceActor(cb.id)}
+                onAdjustPhysical={(delta) =>
+                  combatActions.setCombatantBox(cb.id, 'currentPhysical', cb.currentPhysical + delta)
+                }
+                onAdjustStun={(delta) =>
+                  combatActions.setCombatantBox(cb.id, 'currentStun', cb.currentStun + delta)
+                }
+              />
+            );
+          })}
         </ul>
       )}
 
