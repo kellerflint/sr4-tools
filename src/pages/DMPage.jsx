@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import WeaponsLibrary from '../components/DMLibrary/WeaponsLibrary.jsx';
+import CharactersLibrary from '../components/DMLibrary/CharactersLibrary.jsx';
 
 const TABS = [
   { id: 'combat', label: 'Combat' },
@@ -38,14 +39,7 @@ function CombatPanel() {
 }
 
 function CharactersPanel() {
-  return (
-    <div data-testid="dm-characters-panel">
-      <EmptyPanel
-        title="Characters Library"
-        body="No characters saved yet. CRUD coming in the next commit."
-      />
-    </div>
-  );
+  return <CharactersLibrary />;
 }
 
 function WeaponsPanel() {
