@@ -1,50 +1,13 @@
 import { useState } from 'react';
 import WeaponsLibrary from '../components/DMLibrary/WeaponsLibrary.jsx';
 import CharactersLibrary from '../components/DMLibrary/CharactersLibrary.jsx';
+import CombatPanel from '../components/DMCombat/CombatPanel.jsx';
 
 const TABS = [
   { id: 'combat', label: 'Combat' },
   { id: 'characters', label: 'Characters' },
   { id: 'weapons', label: 'Weapons' },
 ];
-
-function EmptyPanel({ title, body }) {
-  return (
-    <div className="rounded-lg border border-dashed border-border bg-surface p-8 text-center">
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted">
-        {title}
-      </h2>
-      <p className="text-sm text-muted">{body}</p>
-    </div>
-  );
-}
-
-function CombatPanel() {
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_320px]" data-testid="dm-combat-panel">
-      <EmptyPanel
-        title="Roster"
-        body="No combatants yet. Pull characters from your library to start a fight."
-      />
-      <EmptyPanel
-        title="Setup"
-        body="Pick an attacker and a target to begin resolving an attack."
-      />
-      <EmptyPanel
-        title="Combat Log"
-        body="Resolved actions will appear here as a running transcript."
-      />
-    </div>
-  );
-}
-
-function CharactersPanel() {
-  return <CharactersLibrary />;
-}
-
-function WeaponsPanel() {
-  return <WeaponsLibrary />;
-}
 
 export default function DMPage() {
   const [tab, setTab] = useState('combat');
@@ -76,8 +39,8 @@ export default function DMPage() {
       </div>
 
       {tab === 'combat' && <CombatPanel />}
-      {tab === 'characters' && <CharactersPanel />}
-      {tab === 'weapons' && <WeaponsPanel />}
+      {tab === 'characters' && <CharactersLibrary />}
+      {tab === 'weapons' && <WeaponsLibrary />}
     </main>
   );
 }
