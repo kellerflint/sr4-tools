@@ -5,6 +5,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // Single worker keeps RAM low by running tests sequentially in one
+  // Chromium instance. The suite is small enough that the slowdown is
+  // negligible.
+  workers: 1,
   reporter: 'list',
   // Short timeouts: this is a fast local frontend, every interaction should
   // resolve in milliseconds. Long timeouts hide real failures.
