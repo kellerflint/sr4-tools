@@ -6,9 +6,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
+  // Short timeouts: this is a fast local frontend, every interaction should
+  // resolve in milliseconds. Long timeouts hide real failures.
+  timeout: 5000,
+  expect: { timeout: 2000 },
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    actionTimeout: 2000,
+    navigationTimeout: 5000,
   },
   projects: [
     {
