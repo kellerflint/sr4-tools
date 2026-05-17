@@ -112,28 +112,42 @@ test('Roll All Initiative sets a score of at least REA + INT', async ({ page }) 
   expect(Number(score)).toBeGreaterThanOrEqual(8);
 });
 
-test('Acted button increments the displayed IP counter across passes', async ({ page }) => {
-  await addCharacter(page, 'Sam', { ipMax: 2 });
+test('Initial IP display counts down from ipMax', async ({ page }) => {
+  await addCharacter(page, 'Sam', { ipMax: 3 });
+  await page.getByTestId('dm-tab-combat').click();
+  await page.getByTestId('add-combatant-button').click();
+  await page.getByTestId('add-combatant-option').first().click();
+  await expect(page.getByTestId('combatant-row').first()).toContainText('IP 3/3');
+});
+
+test('Solo multi-IP combatant can click Acted ipMax times in a row (auto-advance)', async ({ page }) => {
+  // With no one else to compete for the pass, the system should auto-
+  // advance after each Acted, leaving the combatant immediately eligible
+  // again until they exhaust their IPs.
+  await addCharacter(page, 'Sam', { ipMax: 3 });
   await page.getByTestId('dm-tab-combat').click();
   await page.getByTestId('add-combatant-button').click();
   await page.getByTestId('add-combatant-option').first().click();
 
   const row = page.getByTestId('combatant-row').first();
-  await expect(row).toContainText('IP 0/2');
+  await expect(row).toContainText('IP 3/3');
   await row.getByTestId('combatant-advance').click();
-  await expect(row).toContainText('IP 1/2');
-  // Acted disabled until Next Pass
-  await page.getByTestId('next-pass').click();
+  await expect(row).toContainText('IP 2/3');
   await row.getByTestId('combatant-advance').click();
-  await expect(row).toContainText('IP 2/2');
+  await expect(row).toContainText('IP 1/3');
+  await row.getByTestId('combatant-advance').click();
+  await expect(row).toContainText('IP 0/3');
+  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
 });
 
-test('Acted on a 1-IP combatant: done combatant drops below those still ready', async ({ page }) => {
-  // Two 1-IP combatants, both init 0. Clicking Acted on row 0 marks them
-  // 'done' for the turn; sortRoster moves them below the ready combatant.
-  // This is the intentional behaviour — the next-to-act bubbles up.
-  await addCharacter(page, 'Alice');
-  await addCharacter(page, 'Bob');
+test('Joe (IP 1, INIT 10) and Bob (IP 3, INIT 5) follow SR4 pass order', async ({ page }) => {
+  // The exact walkthrough from the design discussion:
+  //   Pass 1: Joe → Bob (Joe higher init, both eligible)
+  //   Pass 2: Bob (Joe out of IP)
+  //   Pass 3: Bob
+  // Total acts in order: Joe, Bob, Bob, Bob.
+  await addCharacter(page, 'Joe');           // ipMax 1
+  await addCharacter(page, 'Bob', { ipMax: 3 });
   await page.getByTestId('dm-tab-combat').click();
 
   await page.getByTestId('add-combatant-button').click();
@@ -142,19 +156,47 @@ test('Acted on a 1-IP combatant: done combatant drops below those still ready', 
   await page.getByTestId('add-combatant-option').nth(1).click();
 
   const rows = page.getByTestId('combatant-row');
-  await rows.nth(0).getByTestId('combatant-advance').click();
+  // Set inits: row 0 (Joe) = 10, row 1 (Bob) = 5
+  await rows.nth(0).getByTestId('combatant-init-value').fill('10');
+  await rows.nth(0).getByTestId('combatant-init-value').blur();
+  await rows.nth(1).getByTestId('combatant-init-value').fill('5');
+  await rows.nth(1).getByTestId('combatant-init-value').blur();
 
-  // Row 0 is now the still-ready combatant (0/1). Row 1 is done (1/1).
-  await expect(rows.nth(0)).toContainText('IP 0/1');
+  // Joe (init 10) at top with 1/1 IP, Bob below with 3/3 IP
+  await expect(rows.nth(0)).toContainText('IP 1/1');
+  await expect(rows.nth(1)).toContainText('IP 3/3');
+
+  // Pass 1, step 1: Joe acts
+  await rows.nth(0).getByTestId('combatant-advance').click();
+  // Joe is now done (0/1). Bob still ready (3/3). Bob bubbles to top.
+  await expect(rows.nth(0)).toContainText('IP 3/3');
   await expect(rows.nth(0)).toHaveAttribute('data-status', 'ready');
-  await expect(rows.nth(1)).toContainText('IP 1/1');
+  await expect(rows.nth(1)).toContainText('IP 0/1');
+  await expect(rows.nth(1)).toHaveAttribute('data-status', 'done');
+
+  // Pass 1, step 2: Bob acts. Auto-advance to pass 2 (Joe is done, Bob
+  // can act in pass 2 too — still eligible).
+  await rows.nth(0).getByTestId('combatant-advance').click();
+  await expect(rows.nth(0)).toContainText('IP 2/3');
+  await expect(rows.nth(0)).toHaveAttribute('data-status', 'ready');
+
+  // Pass 2: Bob acts. Auto-advance to pass 3.
+  await rows.nth(0).getByTestId('combatant-advance').click();
+  await expect(rows.nth(0)).toContainText('IP 1/3');
+
+  // Pass 3: Bob acts (still at row 0 — only one ready). Combat turn over.
+  // Both done now; Joe (higher init) wins the tiebreak so he sorts on top.
+  await rows.nth(0).getByTestId('combatant-advance').click();
+  await expect(rows.nth(0)).toContainText('IP 0/1'); // Joe
+  await expect(rows.nth(0)).toHaveAttribute('data-status', 'done');
+  await expect(rows.nth(1)).toContainText('IP 0/3'); // Bob
   await expect(rows.nth(1)).toHaveAttribute('data-status', 'done');
 });
 
 test('Acted on multi-IP combatant: acted-this-pass drops below still-ready', async ({ page }) => {
   // Two 2-IP combatants. After Acted on row 0, that combatant is 'acted'
-  // and drops below the still-ready combatant — even though both have the
-  // same init. Reorder is the desired feedback.
+  // and drops below the still-ready combatant. No auto-advance because
+  // the other combatant is still eligible in pass 1.
   await addCharacter(page, 'Alice', { ipMax: 2 });
   await addCharacter(page, 'Bob', { ipMax: 2 });
   await page.getByTestId('dm-tab-combat').click();
@@ -167,21 +209,16 @@ test('Acted on multi-IP combatant: acted-this-pass drops below still-ready', asy
   const rows = page.getByTestId('combatant-row');
   await rows.nth(0).getByTestId('combatant-advance').click();
 
-  // Row 0 = ready combatant (0/2). Row 1 = acted-this-pass combatant (1/2).
-  await expect(rows.nth(0)).toContainText('IP 0/2');
+  // Row 0 = ready combatant (2/2). Row 1 = acted-this-pass (1/2, grayed).
+  await expect(rows.nth(0)).toContainText('IP 2/2');
   await expect(rows.nth(0)).toHaveAttribute('data-status', 'ready');
   await expect(rows.nth(1)).toContainText('IP 1/2');
   await expect(rows.nth(1)).toHaveAttribute('data-status', 'acted');
 });
 
-test('After Acted, the just-acted combatant drops below others still ready', async ({ page }) => {
-  // Alice: init 10, 2 IPs. Bob: init 5, 1 IP.
-  // Pass 1 starts. Alice (higher init) is at the top.
-  // Click Acted on Alice. Alice acted this pass; Bob hasn't.
-  // Even though Alice has higher init, Bob should now be the "next to act"
-  // because Alice is waiting for Next Pass.
+test('After everyone in pass 1 acts, auto-advance reopens multi-IP combatants', async ({ page }) => {
   await addCharacter(page, 'Alice', { ipMax: 2 });
-  await addCharacter(page, 'Bob', { ipMax: 1 });
+  await addCharacter(page, 'Bob', { ipMax: 2 });
   await page.getByTestId('dm-tab-combat').click();
 
   await page.getByTestId('add-combatant-button').click();
@@ -190,73 +227,12 @@ test('After Acted, the just-acted combatant drops below others still ready', asy
   await page.getByTestId('add-combatant-option').nth(1).click();
 
   const rows = page.getByTestId('combatant-row');
-  // Set inits — row 0 is Alice (added first), row 1 is Bob
-  await rows.nth(0).getByTestId('combatant-init-value').fill('10');
-  await rows.nth(0).getByTestId('combatant-init-value').blur();
-  await rows.nth(1).getByTestId('combatant-init-value').fill('5');
-  await rows.nth(1).getByTestId('combatant-init-value').blur();
-
-  // Alice (init 10) should be on top
-  await expect(rows.nth(0)).toContainText('IP 0/2');
-  await expect(rows.nth(1)).toContainText('IP 0/1');
-
   await rows.nth(0).getByTestId('combatant-advance').click();
+  await rows.nth(0).getByTestId('combatant-advance').click(); // act on the new top
 
-  // Bob (still ready, lower init) should now be on top.
-  // Alice (acted this pass, has 1 more IP) drops to row 1.
-  await expect(rows.nth(0)).toContainText('IP 0/1'); // Bob
-  await expect(rows.nth(1)).toContainText('IP 1/2'); // Alice
-});
-
-test('Acted on a multi-IP combatant disables until Next Pass', async ({ page }) => {
-  // ipMax = 2 character. After one Acted click, they have one pass left
-  // (passesActed = 1, ipMax = 2). BUT they can't act AGAIN in the SAME
-  // pass — they have to wait for Next Pass.
-  await addCharacter(page, 'Sam', { ipMax: 2 });
-  await page.getByTestId('dm-tab-combat').click();
-  await page.getByTestId('add-combatant-button').click();
-  await page.getByTestId('add-combatant-option').first().click();
-
-  const row = page.getByTestId('combatant-row').first();
-  await row.getByTestId('combatant-advance').click();
-  // Already acted in this pass — Acted should be disabled
-  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
-  await expect(row).toContainText('IP 1/2');
-});
-
-test('Next Pass re-enables Acted for combatants with IPs left', async ({ page }) => {
-  await addCharacter(page, 'Sam', { ipMax: 2 });
-  await page.getByTestId('dm-tab-combat').click();
-  await page.getByTestId('add-combatant-button').click();
-  await page.getByTestId('add-combatant-option').first().click();
-
-  const row = page.getByTestId('combatant-row').first();
-  await row.getByTestId('combatant-advance').click();
-  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
-
-  await page.getByTestId('next-pass').click();
-
-  // Now Sam can act again in pass 2
-  await expect(row.getByTestId('combatant-advance')).toBeEnabled();
-  await row.getByTestId('combatant-advance').click();
-  await expect(row).toContainText('IP 2/2');
-  // No passes left — Acted now permanently disabled until New Combat Turn
-  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
-});
-
-test('Next Pass does NOT re-enable Acted for combatants out of IPs', async ({ page }) => {
-  await addCharacter(page, 'Sam'); // ipMax = 1
-  await page.getByTestId('dm-tab-combat').click();
-  await page.getByTestId('add-combatant-button').click();
-  await page.getByTestId('add-combatant-option').first().click();
-
-  const row = page.getByTestId('combatant-row').first();
-  await row.getByTestId('combatant-advance').click();
-  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
-
-  await page.getByTestId('next-pass').click();
-  // Still disabled — Sam used his only IP
-  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
+  // Both have now acted once. Auto-advance to pass 2 → both ready again.
+  await expect(rows.nth(0)).toHaveAttribute('data-status', 'ready');
+  await expect(rows.nth(1)).toHaveAttribute('data-status', 'ready');
 });
 
 test('Acted button consumes a pass and grays out the row when exhausted', async ({ page }) => {
@@ -266,26 +242,10 @@ test('Acted button consumes a pass and grays out the row when exhausted', async 
   await page.getByTestId('add-combatant-option').first().click();
 
   const row = page.getByTestId('combatant-row').first();
-  await expect(row).toHaveAttribute('data-exhausted', 'false');
-  await row.getByTestId('combatant-advance').click();
-  await expect(row).toHaveAttribute('data-exhausted', 'true');
-  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
-});
-
-test('Multi-IP combatant cycles ready → acted → ready → done across two passes', async ({ page }) => {
-  await addCharacter(page, 'Sam', { ipMax: 2 });
-  await page.getByTestId('dm-tab-combat').click();
-  await page.getByTestId('add-combatant-button').click();
-  await page.getByTestId('add-combatant-option').first().click();
-
-  const row = page.getByTestId('combatant-row').first();
-  await expect(row).toHaveAttribute('data-status', 'ready');
-  await row.getByTestId('combatant-advance').click();
-  await expect(row).toHaveAttribute('data-status', 'acted');
-  await page.getByTestId('next-pass').click();
   await expect(row).toHaveAttribute('data-status', 'ready');
   await row.getByTestId('combatant-advance').click();
   await expect(row).toHaveAttribute('data-status', 'done');
+  await expect(row.getByTestId('combatant-advance')).toBeDisabled();
 });
 
 test('New Combat Turn resets passes (everyone can act again)', async ({ page }) => {

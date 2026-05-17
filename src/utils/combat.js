@@ -76,6 +76,29 @@ export function sortRoster(combatants, charactersById, currentPass = 1) {
   });
 }
 
+// Find the pass we should be on, given the current state. If anyone is
+// eligible right now in `currentPass`, returns currentPass unchanged.
+// Otherwise advances forward until either someone is eligible OR
+// everyone has used all their IPs (combat turn over). Pure.
+export function nextEligiblePass(combatants, charactersById, currentPass = 1) {
+  let pass = currentPass;
+  // Hard cap to avoid runaway loops if data is weird.
+  for (let i = 0; i < 100; i++) {
+    const anyoneEligible = combatants.some(
+      (c) => canActNow(c, charactersById.get(c.characterId), pass)
+    );
+    if (anyoneEligible) return pass;
+    const anyoneHasIP = combatants.some((c) => {
+      const char = charactersById.get(c.characterId);
+      if (!char) return false;
+      return (c.passesActed || 0) < char.ipMax;
+    });
+    if (!anyoneHasIP) return pass; // combat turn over — leave pass where it is
+    pass++;
+  }
+  return pass;
+}
+
 // Disambiguate combatants that share a characterId. Returns a Map
 // keyed by combatant.id → suffix string ("" if unique, " #1", " #2", ...
 // when duplicated).

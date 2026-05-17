@@ -1,7 +1,11 @@
 import { useCallback } from 'react';
 import usePersistentState from './usePersistentState.js';
 import { generateId } from './useLibrary.js';
-import { initiativeBase, initiativePool } from '../utils/combat.js';
+import {
+  initiativeBase,
+  initiativePool,
+  nextEligiblePass,
+} from '../utils/combat.js';
 import { rollPool } from '../utils/dice.js';
 
 const DEFAULT_COMBAT = {
@@ -104,27 +108,27 @@ export default function useCombat(charactersById) {
     [charactersById, setCombat]
   );
 
-  // Mark the combatant as having used one of their passes this turn.
+  // Mark the combatant as having used one of their passes this turn,
+  // then auto-advance the pass if nobody is eligible in the current one.
+  // The DM never has to click "Next Pass" — it just happens.
   const advanceActor = useCallback(
     (combatantId) => {
-      setCombat((c) => ({
-        ...c,
-        combatants: c.combatants.map((cb) =>
+      setCombat((c) => {
+        const nextCombatants = c.combatants.map((cb) =>
           cb.id === combatantId
             ? { ...cb, passesActed: (cb.passesActed || 0) + 1 }
             : cb
-        ),
-      }));
+        );
+        const newPass = nextEligiblePass(
+          nextCombatants,
+          charactersById,
+          c.currentPass || 1
+        );
+        return { ...c, combatants: nextCombatants, currentPass: newPass };
+      });
     },
-    [setCombat]
+    [charactersById, setCombat]
   );
-
-  // Advance to the next initiative pass within the current combat turn.
-  // Combatants who already acted but still have IPs left become eligible
-  // again. State of passesActed is preserved.
-  const nextPass = useCallback(() => {
-    setCombat((c) => ({ ...c, currentPass: (c.currentPass || 1) + 1 }));
-  }, [setCombat]);
 
   // New combat turn — reset passesActed for everyone and put us back on
   // pass 1. Initiative is left alone so manually entered scores survive;
@@ -150,7 +154,6 @@ export default function useCombat(charactersById) {
     rollAllInitiative,
     rollInitiativeFor,
     advanceActor,
-    nextPass,
     newCombatTurn,
     resetCombat,
   };

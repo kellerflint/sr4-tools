@@ -70,7 +70,8 @@ export default function RosterRow({
           {missing ? '(removed character)' : `${character.name}${suffix}`}
         </span>
         <span className="text-[10px] uppercase tracking-wider text-muted">
-          IP {combatant.passesActed}/{character ? character.ipMax : '—'}
+          IP {character ? Math.max(0, character.ipMax - (combatant.passesActed || 0)) : '—'}
+          /{character ? character.ipMax : '—'}
         </span>
         <button
           type="button"

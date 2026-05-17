@@ -46,15 +46,6 @@ export default function Roster({
           </button>
           <button
             type="button"
-            onClick={combatActions.nextPass}
-            disabled={combat.combatants.length === 0}
-            data-testid="next-pass"
-            className="rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-text disabled:opacity-30"
-          >
-            Next Pass
-          </button>
-          <button
-            type="button"
             onClick={combatActions.newCombatTurn}
             disabled={combat.combatants.length === 0}
             data-testid="new-combat-turn"
