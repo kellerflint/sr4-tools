@@ -2,9 +2,9 @@ import { useCallback } from 'react';
 import usePersistentState from './usePersistentState.js';
 import { generateId } from './useLibrary.js';
 import {
+  autoAdvance,
   initiativeBase,
   initiativePool,
-  nextEligiblePass,
 } from '../utils/combat.js';
 import { rollPool } from '../utils/dice.js';
 
@@ -109,8 +109,10 @@ export default function useCombat(charactersById) {
   );
 
   // Mark the combatant as having used one of their passes this turn,
-  // then auto-advance the pass if nobody is eligible in the current one.
-  // The DM never has to click "Next Pass" — it just happens.
+  // then run the auto-cascade:
+  //   - if Cat 1 is empty but Cat 2 has people → bump currentPass
+  //   - if Cat 1 AND Cat 2 are empty → start a new combat turn
+  // The DM never has to manually advance pass or turn.
   const advanceActor = useCallback(
     (combatantId) => {
       setCombat((c) => {
@@ -119,12 +121,13 @@ export default function useCombat(charactersById) {
             ? { ...cb, passesActed: (cb.passesActed || 0) + 1 }
             : cb
         );
-        const newPass = nextEligiblePass(
+        const adv = autoAdvance(
           nextCombatants,
           charactersById,
-          c.currentPass || 1
+          c.currentPass || 1,
+          c.combatTurn || 0
         );
-        return { ...c, combatants: nextCombatants, currentPass: newPass };
+        return { ...c, ...adv };
       });
     },
     [charactersById, setCombat]

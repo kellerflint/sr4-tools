@@ -61,36 +61,61 @@ export function pickNextActor(combatants, charactersById, currentPass = 1) {
   return eligible[0].id;
 }
 
-// Display order: pure init score desc with stable insertion-order
-// tiebreak. Status (ready / acted / done) only affects per-row styling
-// and the Acted button's enabled state — it does NOT move rows around.
-// charactersById and currentPass are accepted for API symmetry with the
-// other helpers but unused here.
-export function sortRoster(combatants /* , charactersById, currentPass */) {
-  return [...combatants].sort((a, b) => b.initScore - a.initScore);
+// Display order, three explicit categories sorted by INIT desc within each:
+//   Cat 1 (ready)  — haven't acted this pass, can act now
+//   Cat 2 (acted)  — already acted this pass, have more passes left
+//   Cat 3 (done)   — no passes left for the combat turn
+// Stable insertion-order tiebreak within ties.
+const STATUS_RANK = { ready: 0, acted: 1, done: 2 };
+export function sortRoster(combatants, charactersById, currentPass = 1) {
+  return [...combatants].sort((a, b) => {
+    const aRank = STATUS_RANK[combatantStatus(a, charactersById.get(a.characterId), currentPass)];
+    const bRank = STATUS_RANK[combatantStatus(b, charactersById.get(b.characterId), currentPass)];
+    if (aRank !== bRank) return aRank - bRank;
+    return b.initScore - a.initScore;
+  });
 }
 
-// Find the pass we should be on, given the current state. If anyone is
-// eligible right now in `currentPass`, returns currentPass unchanged.
-// Otherwise advances forward until either someone is eligible OR
-// everyone has used all their IPs (combat turn over). Pure.
-export function nextEligiblePass(combatants, charactersById, currentPass = 1) {
+// After any combatant acts, walk the auto-cascade rules to find the
+// settled state:
+//   - if Cat 1 has someone, do nothing
+//   - elif Cat 2 has someone, advance currentPass (those Cat 2 people
+//     become Cat 1)
+//   - else (everyone in Cat 3), start the next combat turn: reset
+//     passesActed to 0, currentPass to 1, combatTurn += 1
+// Loops because a turn-advance might still need another step in weird
+// edge cases. Pure.
+export function autoAdvance(
+  combatants,
+  charactersById,
+  currentPass = 1,
+  combatTurn = 0
+) {
   let pass = currentPass;
-  // Hard cap to avoid runaway loops if data is weird.
+  let turn = combatTurn;
+  let list = combatants;
+  if (list.length === 0) return { combatants: list, currentPass: pass, combatTurn: turn };
+
   for (let i = 0; i < 100; i++) {
-    const anyoneEligible = combatants.some(
-      (c) => canActNow(c, charactersById.get(c.characterId), pass)
+    const cat1 = list.some(
+      (c) => combatantStatus(c, charactersById.get(c.characterId), pass) === 'ready'
     );
-    if (anyoneEligible) return pass;
-    const anyoneHasIP = combatants.some((c) => {
-      const char = charactersById.get(c.characterId);
-      if (!char) return false;
-      return (c.passesActed || 0) < char.ipMax;
-    });
-    if (!anyoneHasIP) return pass; // combat turn over — leave pass where it is
-    pass++;
+    if (cat1) return { combatants: list, currentPass: pass, combatTurn: turn };
+
+    const cat2 = list.some(
+      (c) => combatantStatus(c, charactersById.get(c.characterId), pass) === 'acted'
+    );
+    if (cat2) {
+      pass++;
+      continue;
+    }
+
+    // Everyone is in Cat 3 (done). Start a new combat turn.
+    list = list.map((c) => ({ ...c, passesActed: 0 }));
+    pass = 1;
+    turn = (turn || 0) + 1;
   }
-  return pass;
+  return { combatants: list, currentPass: pass, combatTurn: turn };
 }
 
 // Disambiguate combatants that share a characterId. Returns a Map

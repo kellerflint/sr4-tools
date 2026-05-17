@@ -11,6 +11,7 @@ import {
   pickNextActor,
   sortRoster,
   buildCombatantSuffixes,
+  autoAdvance,
 } from './combat.js';
 
 const char = (overrides = {}) => ({
@@ -189,41 +190,95 @@ describe('pickNextActor', () => {
 });
 
 describe('sortRoster', () => {
-  it('orders strictly by init score desc, regardless of pass status', () => {
+  it('groups by category (ready → acted → done), init desc within each', () => {
     const charactersById = new Map([
-      ['c1', char({ id: 'c1', ipMax: 1 })],
-      ['c2', char({ id: 'c2', ipMax: 1 })],
-      ['c3', char({ id: 'c3', ipMax: 1 })],
+      ['c1', char({ id: 'c1', ipMax: 1 })], // a → done (passesActed=1)
+      ['c2', char({ id: 'c2', ipMax: 1 })], // b → ready (passesActed=0)
+      ['c3', char({ id: 'c3', ipMax: 2 })], // c → acted (passesActed=1, has more)
     ]);
     const combatants = [
       comb({ id: 'a', characterId: 'c1', initScore: 5, passesActed: 1 }),
       comb({ id: 'b', characterId: 'c2', initScore: 3 }),
-      comb({ id: 'c', characterId: 'c3', initScore: 10 }),
+      comb({ id: 'c', characterId: 'c3', initScore: 10, passesActed: 1 }),
     ];
-    expect(sortRoster(combatants, charactersById, 1).map((c) => c.id)).toEqual([
-      'c', 'a', 'b',
+    expect(sortRoster(combatants, charactersById, 1).map((x) => x.id)).toEqual([
+      'b', // ready (only one)
+      'c', // acted
+      'a', // done
     ]);
   });
 
-  it('keeps tied scores in insertion order (so Acted does not shuffle rows)', () => {
+  it('within a category, higher init goes first', () => {
     const charactersById = new Map([
       ['c1', char({ id: 'c1', ipMax: 2 })],
-      ['c2', char({ id: 'c2', ipMax: 1 })],
+      ['c2', char({ id: 'c2', ipMax: 2 })],
+      ['c3', char({ id: 'c3', ipMax: 2 })],
     ]);
-    const before = [
-      comb({ id: 'a', characterId: 'c1', initScore: 10 }),
-      comb({ id: 'b', characterId: 'c2', initScore: 10 }),
+    // All three ready: low/high/mid init → sorted high, mid, low
+    const combatants = [
+      comb({ id: 'a', characterId: 'c1', initScore: 5 }),
+      comb({ id: 'b', characterId: 'c2', initScore: 15 }),
+      comb({ id: 'c', characterId: 'c3', initScore: 10 }),
     ];
-    expect(sortRoster(before, charactersById, 1).map((c) => c.id)).toEqual([
-      'a', 'b',
+    expect(sortRoster(combatants, charactersById, 1).map((x) => x.id)).toEqual([
+      'b', 'c', 'a',
     ]);
-    const after = [
-      { ...before[0], passesActed: 1 }, // acted; init unchanged
-      before[1],
+  });
+});
+
+describe('autoAdvance', () => {
+  it('returns state unchanged when someone is ready in current pass', () => {
+    const charactersById = new Map([['c1', char({ id: 'c1', ipMax: 2 })]]);
+    const combatants = [comb({ characterId: 'c1' })];
+    const r = autoAdvance(combatants, charactersById, 1, 0);
+    expect(r.currentPass).toBe(1);
+    expect(r.combatTurn).toBe(0);
+    expect(r.combatants).toBe(combatants);
+  });
+
+  it('bumps currentPass when nobody is ready but Cat 2 has someone', () => {
+    // One combatant, ipMax 2, has already acted in pass 1. Cat 2 has them.
+    const charactersById = new Map([['c1', char({ id: 'c1', ipMax: 2 })]]);
+    const combatants = [comb({ characterId: 'c1', passesActed: 1 })];
+    const r = autoAdvance(combatants, charactersById, 1, 0);
+    expect(r.currentPass).toBe(2);
+    expect(r.combatTurn).toBe(0);
+    expect(r.combatants[0].passesActed).toBe(1); // unchanged
+  });
+
+  it('starts a new combat turn when Cat 1 and Cat 2 are both empty', () => {
+    const charactersById = new Map([['c1', char({ id: 'c1', ipMax: 1 })]]);
+    // Combatant is done (passesActed=ipMax). Cat 3 only.
+    const combatants = [comb({ characterId: 'c1', passesActed: 1 })];
+    const r = autoAdvance(combatants, charactersById, 1, 5);
+    expect(r.combatTurn).toBe(6);
+    expect(r.currentPass).toBe(1);
+    expect(r.combatants[0].passesActed).toBe(0);
+  });
+
+  it('handles Joe/Bob mid-fight: Joe done, Bob acted-once — bumps to pass 2', () => {
+    const charactersById = new Map([
+      ['joe', char({ id: 'joe', ipMax: 1 })],
+      ['bob', char({ id: 'bob', ipMax: 3 })],
+    ]);
+    const combatants = [
+      comb({ characterId: 'joe', passesActed: 1 }), // done
+      comb({ characterId: 'bob', passesActed: 1 }), // acted, has 2 more
     ];
-    expect(sortRoster(after, charactersById, 1).map((c) => c.id)).toEqual([
-      'a', 'b',
-    ]);
+    const r = autoAdvance(combatants, charactersById, 1, 0);
+    expect(r.currentPass).toBe(2);
+    expect(r.combatTurn).toBe(0);
+    // Now Bob is Cat 1 again
+    expect(
+      combatantStatus(r.combatants[1], charactersById.get('bob'), r.currentPass)
+    ).toBe('ready');
+  });
+
+  it('does nothing for an empty roster', () => {
+    const r = autoAdvance([], new Map(), 1, 0);
+    expect(r.currentPass).toBe(1);
+    expect(r.combatTurn).toBe(0);
+    expect(r.combatants).toEqual([]);
   });
 });
 
