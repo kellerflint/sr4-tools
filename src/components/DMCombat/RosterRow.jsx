@@ -56,9 +56,9 @@ export default function RosterRow({
         isCurrent
           ? 'border-accent bg-accent/10'
           : status === 'done'
-          ? 'border-border bg-surface-2 opacity-50'
+          ? 'border-border bg-surface-2 opacity-30'
           : status === 'acted'
-          ? 'border-border bg-surface-2 opacity-75'
+          ? 'border-border bg-surface-2 opacity-60'
           : 'border-border bg-surface-2'
       }`}
     >

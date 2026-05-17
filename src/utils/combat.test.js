@@ -189,61 +189,40 @@ describe('pickNextActor', () => {
 });
 
 describe('sortRoster', () => {
-  it('orders ready combatants by init desc, then acted, then done', () => {
+  it('orders strictly by init score desc, regardless of pass status', () => {
     const charactersById = new Map([
-      ['c1', char({ id: 'c1', ipMax: 1 })], // a: done after 1 pass
-      ['c2', char({ id: 'c2', ipMax: 1 })], // b: ready
-      ['c3', char({ id: 'c3', ipMax: 2 })], // c: acted this pass, has more
+      ['c1', char({ id: 'c1', ipMax: 1 })],
+      ['c2', char({ id: 'c2', ipMax: 1 })],
+      ['c3', char({ id: 'c3', ipMax: 1 })],
     ]);
     const combatants = [
-      comb({ id: 'a', characterId: 'c1', initScore: 5, passesActed: 1 }), // done
-      comb({ id: 'b', characterId: 'c2', initScore: 3 }),                  // ready
-      comb({ id: 'c', characterId: 'c3', initScore: 10, passesActed: 1 }), // acted
+      comb({ id: 'a', characterId: 'c1', initScore: 5, passesActed: 1 }),
+      comb({ id: 'b', characterId: 'c2', initScore: 3 }),
+      comb({ id: 'c', characterId: 'c3', initScore: 10 }),
     ];
-    // Ready first (b), then acted (c), then done (a)
     expect(sortRoster(combatants, charactersById, 1).map((c) => c.id)).toEqual([
-      'b', 'c', 'a',
+      'c', 'a', 'b',
     ]);
   });
 
-  it('after Acted on the top combatant, others still ready bubble up', () => {
-    // The bug the user reported: Alice (init 10, 2 IPs) and Bob (init 5, 1 IP).
-    // Before Acted, order is Alice, Bob (both ready). After Acted on Alice,
-    // Bob (still ready) takes the top spot; Alice (acted this pass) drops.
+  it('keeps tied scores in insertion order (so Acted does not shuffle rows)', () => {
     const charactersById = new Map([
-      ['c1', char({ id: 'c1', ipMax: 2 })], // Alice
-      ['c2', char({ id: 'c2', ipMax: 1 })], // Bob
+      ['c1', char({ id: 'c1', ipMax: 2 })],
+      ['c2', char({ id: 'c2', ipMax: 1 })],
     ]);
     const before = [
       comb({ id: 'a', characterId: 'c1', initScore: 10 }),
-      comb({ id: 'b', characterId: 'c2', initScore: 5 }),
+      comb({ id: 'b', characterId: 'c2', initScore: 10 }),
     ];
     expect(sortRoster(before, charactersById, 1).map((c) => c.id)).toEqual([
       'a', 'b',
     ]);
     const after = [
-      { ...before[0], passesActed: 1 }, // Alice acted
+      { ...before[0], passesActed: 1 }, // acted; init unchanged
       before[1],
     ];
     expect(sortRoster(after, charactersById, 1).map((c) => c.id)).toEqual([
-      'b', 'a',
-    ]);
-  });
-
-  it('higher-IP combatant bubbles up once everyone else is done', () => {
-    // Alice 4 IPs init 15, Bob 2 IPs init 18. Pass 3: Bob is done (used
-    // both his passes), Alice still has 2 more.
-    const charactersById = new Map([
-      ['alice', char({ id: 'alice', ipMax: 4 })],
-      ['bob', char({ id: 'bob', ipMax: 2 })],
-    ]);
-    const combatants = [
-      comb({ id: 'a', characterId: 'alice', initScore: 15, passesActed: 2 }),
-      comb({ id: 'b', characterId: 'bob', initScore: 18, passesActed: 2 }),
-    ];
-    expect(sortRoster(combatants, charactersById, 3).map((c) => c.id)).toEqual([
-      'a', // ready in pass 3
-      'b', // done
+      'a', 'b',
     ]);
   });
 });

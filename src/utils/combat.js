@@ -61,19 +61,13 @@ export function pickNextActor(combatants, charactersById, currentPass = 1) {
   return eligible[0].id;
 }
 
-// Display order:
-//   1. ready combatants by init score desc
-//   2. acted-this-pass combatants by init score desc
-//   3. done combatants by init score desc
-// JS sort is stable (ES2019+) so equal-rank combatants keep insertion order.
-const STATUS_RANK = { ready: 0, acted: 1, done: 2 };
-export function sortRoster(combatants, charactersById, currentPass = 1) {
-  return [...combatants].sort((a, b) => {
-    const aRank = STATUS_RANK[combatantStatus(a, charactersById.get(a.characterId), currentPass)];
-    const bRank = STATUS_RANK[combatantStatus(b, charactersById.get(b.characterId), currentPass)];
-    if (aRank !== bRank) return aRank - bRank;
-    return b.initScore - a.initScore;
-  });
+// Display order: pure init score desc with stable insertion-order
+// tiebreak. Status (ready / acted / done) only affects per-row styling
+// and the Acted button's enabled state — it does NOT move rows around.
+// charactersById and currentPass are accepted for API symmetry with the
+// other helpers but unused here.
+export function sortRoster(combatants /* , charactersById, currentPass */) {
+  return [...combatants].sort((a, b) => b.initScore - a.initScore);
 }
 
 // Find the pass we should be on, given the current state. If anyone is
